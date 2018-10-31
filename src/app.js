@@ -18,17 +18,24 @@ const io = socketio(server)
 
 server.listen(3001)
 
-let c
+let connection
 r.connect({ host: 'localhost', port: 28015 }, (err, conn) => {
   if (err) throw err
-  c = conn
+  connection = conn
 
-  r.table('people').delete().run(c, (e, c) => { console.log(e, c) })
-  
+  r.table('people')
+    .delete()
+    .run(connection, (error, result) => {
+      if (error) throw error
+      console.log(result)
+    })
+
   let i = 0
   setInterval(() => {
     i++
-    r.table('people').insert({ name: 'Person' + i, age: i, distance: i * 10 }).run(c, (e, c) => {})
+    r.table('people')
+      .insert({ name: 'Person' + i, age: i, distance: i * 10 })
+      .run(connection, (error, result) => { if (error) throw error })
   }, 300)
 })
 
@@ -45,12 +52,12 @@ r.connect({ host: 'localhost', port: 28015 }, (err, conn) => {
 io.on('connection', socket => {
   socket.emit('status', { status: 'connection established' })
 
-  r.table('people').changes({ includeInitial: true, squash: true }).run(c, (e, c) => {
-    if (e) throw e
+  r.table('people').changes({ includeInitial: true, squash: true }).run(connection, (error, cursor) => {
+    if (error) throw error
 
-    c.each((e, r) => {
-      if (e) throw e
-      socket.emit('people', r)
+    cursor.each((error2, result) => {
+      if (error2) throw error2
+      socket.emit('people', result)
     })
   })
 })
